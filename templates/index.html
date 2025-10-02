@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h4>Panel Administrador - Enviar recordatorio</h4>
+    <form id="sendForm">
+      <div class="mb-3">
+        <input id="usuario" class="form-control" placeholder="Usuario destino (ej: Usuario1)"/>
+      </div>
+      <div class="mb-3">
+        <textarea id="mensaje" class="form-control" rows="3" placeholder="Mensaje (ej: entrenamiento pierna 18:00)"></textarea>
+      </div>
+      <button class="btn btn-primary">Enviar</button>
+      <span id="status" class="ms-3"></span>
+    </form>
+    <hr/>
+    <h5>Usuarios detectados</h5>
+    <ul id="users" class="list-group mb-3"></ul>
+    <h5>Últimos recordatorios procesados</h5>
+    <div id="processed"></div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('sendForm');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const usuario = document.getElementById('usuario').value.trim();
+  const mensaje = document.getElementById('mensaje').value.trim();
+  document.getElementById('status').textContent = 'Enviando...';
+  const r = await fetch('/api/send', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({usuario, mensaje})});
+  const j = await r.json();
+  document.getElementById('status').textContent = j.ok ? 'Enviado' : ('Error: ' + (j.error || ''));
+  document.getElementById('mensaje').value = '';
+  loadProcessed();
+  loadUsers();
+});
+
+async function loadProcessed(){
+  const r = await fetch('/api/processed');
+  const data = await r.json();
+  const div = document.getElementById('processed');
+  if(data.length===0) div.innerHTML = '<p class="text-muted">(sin mensajes procesados)</p>';
+  else div.innerHTML = data.map(m=>`<div class="card my-2"><div class="card-body">${m}</div></div>`).join('');
+}
+
+async function loadUsers(){
+  const r = await fetch('/api/users');
+  const data = await r.json();
+  const ul = document.getElementById('users');
+  ul.innerHTML = data.map(u=>`<li class="list-group-item">${u}</li>`).join('') || '<li class="list-group-item text-muted">(sin usuarios)</li>';
+}
+
+setInterval(()=>{loadProcessed(); loadUsers();}, 1200);
+loadProcessed(); loadUsers();
+</script>
+{% endblock %}

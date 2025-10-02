@@ -1,0 +1,61 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h4>Panel Cliente - recibir notificaciones</h4>
+    <p>Cuando entres, escribe tu nombre para recibir solo tus recordatorios.</p>
+    <button id="btnStart" class="btn btn-success mb-3">Iniciar sesión como cliente</button>
+    <div id="clientArea" style="display:none;">
+      <h5>Mis notificaciones (en vivo)</h5>
+      <div id="toasts"></div>
+      <hr/>
+      <h5>Historial</h5>
+      <div id="hist"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let usuario='';
+const btn = document.getElementById('btnStart');
+btn.onclick = ()=>{
+  usuario = prompt('Escribe tu nombre de usuario (ej: Usuario1)') || '';
+  if(!usuario) return;
+  btn.style.display='none';
+  document.getElementById('clientArea').style.display='block';
+  startPolling();
+};
+
+let seen = [];
+async function startPolling(){
+  if(Notification.permission !== 'granted'){
+    Notification.requestPermission();
+  }
+  setInterval(check, 1000);
+  check();
+}
+
+async function check(){
+  const r = await fetch('/api/processed');
+  const data = await r.json();
+  const propios = data.filter(m=> m.startsWith(usuario + ' -'));
+  const nuevos = propios.filter(m=> !seen.includes(m));
+  seen = propios.slice();
+  // mostrar toasts
+  for(const msg of nuevos){
+    const div = document.createElement('div');
+    div.className = 'alert alert-primary';
+    div.textContent = msg;
+    document.getElementById('toasts').prepend(div);
+    setTimeout(()=>{ div.remove(); }, 5000);
+    if(Notification.permission === 'granted'){
+      new Notification('Recordatorio', { body: msg });
+    }
+  }
+  // historial
+  const hist = document.getElementById('hist');
+  if(seen.length===0) hist.innerHTML = '<p class="text-muted">(sin historial)</p>';
+  else hist.innerHTML = seen.map(m=>`<div class="card my-1"><div class="card-body">${m}</div></div>`).reverse().join('');
+}
+</script>
+{% endblock %}
